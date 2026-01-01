@@ -4,47 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gənc Səs | Azad Platforma</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { background: #050505; color: #e0e0e0; font-family: sans-serif; margin: 0; padding: 15px; }
-        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid #333; }
-        .header h1 { color: #00ff88; margin: 0; font-size: 28px; }
-        .input-area { background: #111; padding: 15px; border-radius: 12px; margin: 20px 0; border: 1px solid #222; }
-        textarea { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 8px; font-size: 16px; resize: none; }
-        button { width: 100%; background: #00ff88; color: #000; border: none; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        .post { background: #111; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #00ff88; animation: fadeIn 0.5s; }
-        .post-time { font-size: 11px; color: #666; margin-top: 8px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { background: #050505; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 500px; }
+        .header { text-align: center; border-bottom: 1px solid #333; padding: 25px 0; width: 100%; }
+        h1 { color: #00ff88; margin: 0; letter-spacing: 3px; font-size: 28px; text-transform: uppercase; }
+        .input-area { background: #111; padding: 20px; border-radius: 15px; margin: 20px 0; border: 1px solid #222; box-sizing: border-box; width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        textarea { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 15px; border-radius: 10px; resize: none; font-size: 16px; box-sizing: border-box; outline: none; transition: 0.3s; }
+        textarea:focus { border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+        button { width: 100%; background: #00ff88; color: #000; border: none; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #00cc6e; }
+        button:disabled { background: #444; cursor: not-allowed; }
+        #feed { width: 100%; margin-top: 10px; }
+        .post { background: #111; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid #00ff88; word-wrap: break-word; animation: slideIn 0.4s ease-out; }
+        .post-time { font-size: 11px; color: #666; margin-top: 10px; display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h1>GƏNC SƏS</h1>
-    <small>Heç bir qeydiyyat yoxdur. Tam anonim.</small>
-</div>
+<div class="container">
+    <div class="header">
+        <h1>GƏNC SƏS</h1>
+        <p style="color: #888; font-size: 13px; margin-top: 5px;">Sənin fikrin, sənin azadlığın.</p>
+    </div>
 
-<div class="input-area">
-    <textarea id="msg" placeholder="Sözünü de..."></textarea>
-    <button onclick="send()">PAYLAŞ</button>
-</div>
+    <div class="input-area">
+        <textarea id="msg" rows="3" placeholder="Bu gün nə demək istəyirsən?"></textarea>
+        <button id="sendBtn" onclick="send()">PAYLAŞ</button>
+    </div>
 
-<div id="feed">
-    <div class="post">Sistem işləyir. İlk anonim fikrini yuxarıdan yaza bilərsən.</div>
+    <div id="feed">Mesajlar yüklənir...</div>
 </div>
 
 <script>
-    function send() {
-        let msg = document.getElementById('msg').value;
-        if(!msg.trim()) return;
-        let feed = document.getElementById('feed');
-        let div = document.createElement('div');
-        div.className = 'post';
-        div.innerHTML = msg + '<div class="post-time">' + new Date().toLocaleTimeString() + ' • Anonim</div>';
-        feed.prepend(div);
-        document.getElementById('msg').value = '';
+    const supabaseUrl = 'https://pyknspxnwnilhqsazidj.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5a25zcHhud25pbGhxc2F6aWRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyODE0MzAsImV4cCI6MjA4Mjg1NzQzMH0.NlU2cVFug6PH6rZ4RM-344-tPnoYQVrOzWKXOn5y3eU'; 
+    const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function loadPosts() {
+        const { data, error } = await _supabase.from('messages').select('*').order('created_at', { ascending: false });
+        if (data) {
+            const feed = document.getElementById('feed');
+            if (data.length === 0) {
+                feed.innerHTML = "<p style='text-align:center; color:#666;'>Hələ ki, mesaj yoxdur. İlk sən yaz!</p>";
+            } else {
+                feed.innerHTML = data.map(p => `
+                    <div class="post">
+                        <div>${p.content}</div>
+                        <span class="post-time">${new Date(p.created_at).toLocaleString('az-AZ')} • Anonim</span>
+                    </div>
+                `).join('');
+            }
+        }
     }
+
+    async function send() {
+        const msgInput = document.getElementById('msg');
+        const btn = document.getElementById('sendBtn');
+        const msg = msgInput.value.trim();
+        
+        if(!msg) return;
+        
+        btn.disabled = true;
+        btn.innerText = 'GÖNDƏRİLİR...';
+
+        const { error } = await _supabase.from('messages').insert([{ content: msg }]);
+        
+        if (error) {
+            alert("Xəta! Mesaj göndərilmədi. Supabase-də RLS-i söndürdüyündən əmin ol.");
+            console.error(error);
+        } else {
+            msgInput.value = '';
+            await loadPosts();
+        }
+        btn.disabled = false;
+        btn.innerText = 'PAYLAŞ';
+    }
+
+    loadPosts();
+    setInterval(loadPosts, 10000); // Hər 10 saniyədən bir yenilə
 </script>
 
 </body>
 </html>
+
